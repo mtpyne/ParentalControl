@@ -8,6 +8,8 @@
 # Author        : Thomas Baeckeroot
 # Module        : install.sh
 # Description   : Installs the "Poor man's parental control" on the computer.
+# Note		: Modifications suggested by Termy in https://forums.linuxmint.com/viewtopic.php?f=213&t=77687
+#		  were incorporated.
 
 set +x
 echo "- Install script for Parental Time Control -"
@@ -20,8 +22,7 @@ sudo cp limit-usage-time.sh /root/ || echo "An ERROR or WARNING occurred when co
 sudo chmod u+x /root/limit-usage-time.sh || echo "An ERROR or WARNING occurred when setting execution rights on script!"
 
 echo "Check if limit-usage-time.sh has already been added to cron:"
-sudo crontab -l | grep limit-usage-time.sh > nul
-if [ "$?" == "0" ]; then
+if sudo crontab -l | grep limit-usage-time.sh &> /dev/null; then
 	echo "Parental control script already in cron... Probably not the first time this install script is ran."
 else
 	echo "limit-usage-time.sh not detected in cron, adding it..."
@@ -33,18 +34,27 @@ else
 fi
 
 # Users of the machine (non-system, not weird, etc):
-VICTIMS=`awk -F'[/:]' '{if ($3 >= 1000 && $3 != 65534) print $1}' /etc/passwd`
+# MTP: original code before, Termy suggestion after
+# VICTIMS=`awk -F'[/:]' '{if ($3 >= 1000 && $3 != 65534) print $1}' /etc/passwd`
+VICTIMS=`for I in `cut -d ":" -f 1,3 /etc/passwd`; { ! [ ${I/*:} -eq 65534 ] && [ ${I/*:} -ge 1000 ] && echo "${I%:*}"; }`
+
+# MTP: end
 echo ""
 echo "Known users of this machine:"
 echo $VICTIMS
 echo ""
 
-defaultadmin=`who am i | awk '{print $1}'`
+# MTP: original code before, Termy suggestion after
+#defaultadmin=`who am i | awk '{print $1}'`
+defaultadmin=$USER
 # workaround in case previous did not worked ( gnome-terminal issue )
-if [ "$defaultadmin" == "" ]; then
-	term=`tty`
-	defaultadmin=`ls -l $term | awk '{print $3}'`
-fi
+# MTP: original code before, Termy suggestion after
+#if [ "$defaultadmin" == "" ]; then
+#	term=`tty`
+#	defaultadmin=`ls -l $term | awk '{print $3}'`
+#fi
+stat --format="%U" `tty`
+#MTP: end
 PREVIOUS_ADMIN=`sudo cat /root/parental_control_admin.cfg`
 if [ "PREVIOUS_ADMIN" != "" ]; then
 	echo "Information: '$PREVIOUS_ADMIN' as been previously informed as administrator."
